@@ -1,0 +1,103 @@
+---
+title: "GettingData Week 4"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: zenburn
+    theme: cosmo
+    toc: yes
+---
+
+##Editing text variables
+```{r}
+cameraData <- data.frame(UCBAdmissions)
+names(cameraData)
+tolower(names(cameraData))
+```
+###Fixing char vectors - strsplit()
+```{r}
+splitNames <- strsplit(names(cameraData),"\\.")
+splitNames[[2]] 
+splitNames[[3]]
+```
+### Quick aside - lists
+```{r}
+mylist <- list(letters=c("A", "b", "c"), numbers = 1:3, matrix(1:25, ncol = 5))
+head(mylist)
+mylist$letters
+mylist[[1]]
+```
+###Fixing char vectors - sapply()
+```{r}
+splitNames
+splitNames[[2]][1]
+firstElement <- function(x) {x[1]}
+sapply(splitNames, firstElement)
+```
+### Fixing char vectors - sub()
+```
+names(reviews)
+
+[1] "id"    "solution_id" "reviewer_id" "start"     "stop"  "accept"
+sub("_",",names(reviews),)
+[1] "id"    "solutionid"  "reviewerid" "start"  "stop" "timeleft"  "accept"
+```
+###Fixing char vectors - gsub( )
+```{r}
+testName <- "this_is_a_test"
+sub("_","",testName)
+gsub("_", "", testName)
+```
+###Finding values - grep(), grepl()
+```{r}
+grep("Alameda", cameraData$intersection)
+grepl("Alameda", cameraData$intersection)
+table(grepl("Alameda", cameraData$intersection))
+cameraData2 <- cameraData[!grepl("Alameda", cameraData$intersection),]
+cameraData2
+```
+###More on grep( )
+```{r}
+grep("Alameda",cameraData$intersection, value = T)
+grep("JeffStreet",cameraData$intersection)
+length(grep("JeffStreet", cameraData$intersection))
+```
+###More useful string fun
+```{r}
+#install.packages("stringr")
+library(stringr)
+nchar("Jeffrey Leek")
+substr("Jeffrey Leek",1,7)
+paste("Jeffrey","Leek")
+paste0("Jeffrey","Leek")
+str_trim("Jeff      ")
+```
+###Formatting dates
+```{r}
+d2 <- Sys.Date()
+d2
+format(d2, "%a %b %d")
+```
+###Creating dates
+```{r}
+x <- c("1jan1960", "2jan1960", "31mar1960", "30jul1960")
+z <- as.Date(x, "%d%b%Y")
+z
+z[1] - z[2]
+as.numeric(z[1] - z[2])
+weekdays(d2)
+months(d2)
+julian(d2)
+```
+###Lubridate
+```{r}
+library(lubridate)
+ymd("20140108")
+mdy("08/04/2013")
+```
+###Dealing with times
+```{r}
+ymd_hms("2011-08-03 10:15:03")
+```
+

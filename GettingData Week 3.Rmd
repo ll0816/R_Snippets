@@ -1,0 +1,124 @@
+---
+title: "GetData Week 3"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: zenburn
+    theme: united
+    toc: yes
+---
+###Quantile
+```
+restData <- read.csv("restaurant.csv")
+quantile(restData$councilDistrict, na.rm=T)
+
+ 0%  25%  50%  75% 100% 
+   1    2    9   11   14 
+   
+quantile(restData$councilDistrict, probs=c(0.5,0.75,0.9))
+50% 75% 90% 
+  9  11  12 
+```
+### Orw and column sums
+```
+colSums(is.na(restData))
+           name         zipCode    neighborhood councilDistrict  policeDistrict      Location.1 
+              0               0               0               0               0               0 
+
+all(colSums(is.na(restData))==0)
+[1] TRUE
+```
+###Cross tabs
+```{r}
+data(UCBAdmissions)
+DF = as.data.frame(UCBAdmissions)
+xt <- xtabs(Freq ~ Gender + Admit, data=DF)
+xt
+```
+###Creating binary variables
+```
+restData$zipWrong <- ifelse(restData$zipCode <0, T, F)
+table(restData$zipWrong, restData$zipCode < 0)
+       FALSE TRUE
+  FALSE  1326    0
+  TRUE      0    1
+> 
+```
+###Creating categorical variable
+```
+restData$zipGroups <- cut(restData$zipCode, breaks = quantile(restData$zipCode))
+table(restData$zipGroups)
+(-2.123e+04,2.12e+04]  (2.12e+04,2.122e+04] (2.122e+04,2.123e+04] (2.123e+04,2.129e+04] 
+                  337                   375                   282                   332 
+```
+
+###Easier cutting
+```
+#install.packages("Hmisc")
+library(Hmisc)
+restData$zipGroups <- cut2(restData$zipCode, g=4)
+table(restData$zipGroups)
+[-21226,21205) [ 21205,21220) [ 21220,21227) [ 21227,21287] 
+           338            375            300            314 
+```
+##Reshaping Data
+```{r}
+library(reshape2)
+```
+###Melting data frames
+```{r}
+mtcars$carnames <- rownames(mtcars)
+carMelt <- melt(mtcars,id=c("carnames","gear","cyl"),measure.vars = c("mpg","hp"))
+head(carMelt)
+```
+###Casting data frames
+```{r}
+cylData <- dcast(carMelt, cyl ~ variable)
+cylData
+cylData <- dcast(carMelt, cyl ~ variable,mean)
+cylData
+```
+###Avging values
+```{r}
+tapply(InsectSprays$count, InsectSprays$spray, sum)
+spIns <- split(InsectSprays$count, InsectSprays$spray)
+spIns
+sprCount <- lapply(spIns, sum)
+unlist(sprCount)
+sapply(spIns, sum)
+library(plyr)
+ddply(InsectSprays,.(spray), summarize, sum= sum(count))
+```
+###Merging Data
+```
+mergedData <- merge(reviews, solutions, by.x="solution_id", by.y="id", all =T)
+```
+###Default-merge all common column
+```
+intersect(names(solutions), names(reviews))
+merge(reviews,solutions, all=T)
+```
+### Using jion in plyr
+```{r}
+df1 <- data.frame(id=sample(1:10), x=rnorm(10))
+df2 <- data.frame(id=sample(1:10), y=rnorm(10))
+arrange(join(df1,df2),id)
+```
+###having multiple data frames
+```{r}
+df1 <- data.frame(id=sample(1:10), x=rnorm(10))
+df2 <- data.frame(id=sample(1:10), y=rnorm(10))
+df3 <- data.frame(id=sample(1:10), z=rnorm(10))
+dfList <- list(df1, df2, df3)
+join_all(dfList)
+```
+
+
+
+
+
+
+
+
+

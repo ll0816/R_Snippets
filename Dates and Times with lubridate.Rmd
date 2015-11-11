@@ -1,0 +1,115 @@
+---
+title: "Dates and Times with lubridate"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: zenburn
+    theme: cosmo
+    toc: yes
+---
+
+###Guaranteed to work with an "en_US.UTF-8"locale
+```{r}
+Sys.getlocale("LC_TIME")
+library(lubridate)
+```
+### lubridate contains many useful functions
+```
+help(package = lubridate)
+```
+###today() function returns today's date
+```{r}
+this_day <- today()
+this_day
+```
+###There are three components to this date. In order, they are year, month, and day.
+```{r}
+year(this_day)
+month(this_day)
+day(this_day)
+```
+###Get the day of the week from this_day using the wday() function
+```{r}
+wday(this_day)
+wday(this_day, label = TRUE)
+```
+###The now() function returns the date-time representing this exact moment in time.
+```{r}
+now()
+this_moment <- now()
+this_moment
+```
+> Just like with dates, we can extract the year, month, day, or day of week. However, we can also use hour(), minute(), and second() to extract specific time information.
+
+```{r}
+hour(this_moment)
+minute(this_moment)
+second(this_moment)
+```
+> lubridate offers a variety of functions for parsing date-times. These functions take the form of ymd(), dmy(), hms(), ymd_hms(), etc., where each letter in the name of the function stands for the location of years (y), months (m), days (d), hours (h), minutes (m), and/or seconds (s) in the date-time being read in.
+
+```{r}
+my_date <- ymd("1989-05-17")
+my_date
+class(my_date)
+ymd("1989 May 17")
+mdy("March 12, 1975")
+dmy( 25081985)
+ymd("192012")
+ymd("1920/1/2")
+```
+### In addition to dates, lubridate can parse date-times.
+```
+> dt1
+[1] "2014-08-23 17:23:02"
+ymd_hms(dt1)
+[1] "2014-08-23 17:23:02 UTC"
+```
+```{r}
+hms("03:22:14")
+```
+###lubridate is also capable of handling vectors of dates, which is particularly helpful when you need to parse an entire column of data.
+```
+> dt2
+[1] "2014-05-14" "2014-09-22" "2014-07-11"
+
+> ymd(dt2)
+[1] "2014-05-14 UTC" "2014-09-22 UTC" "2014-07-11 UTC"
+```
+### The update() function allows us to update one or more components of a date-time.
+```{r}
+update(this_moment, hours = 8, minutes = 34, seconds = 55)
+this_moment
+```
+###To find the current date in New York
+```{r}
+nyc <- now("America/New_York")
+nyc
+#flight is the day after tomorrow (in New York time)
+nyc + days(2)
+depart <- nyc + days(2)
+depart
+depart <- update(depart, hours = 17, minutes = 34)
+depart
+```
+###what time will flight arrive the airport in Hong Kong?
+```{r}
+arrive <- depart + hours(15) + minutes(50)
+```
+###The with_tz() function returns a date-time as it would appear in another time zone
+```{r}
+arrive <- with_tz(arrive,"Asia/Hong_Kong")
+arrive
+```
+### how long it has been from June 17, 2008 in Singapore
+```{r}
+last_time <- mdy("June 17, 2008", tz = "Singapore")
+last_time
+how_long <- new_interval(last_time, arrive)
+as.period(how_long)
+```
+
+
+
+

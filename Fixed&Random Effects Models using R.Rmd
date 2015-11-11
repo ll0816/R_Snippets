@@ -1,0 +1,184 @@
+---
+title: "Fixed/Random Effects Models
+using R"
+output: html_document
+---
+##Explore Panel Data
+```{r}
+library(foreign)
+Panel <- read.dta("http://dss.princeton.edu/training/Panel101.dta")
+head(Panel)
+coplot(y ~ year|country, type="l", data=Panel)        # Lines
+coplot(y ~ year|country, type="b", data=Panel)        # Points and lines
+```
+
+```{r}
+Panel <- read.dta("http://dss.princeton.edu/training/Panel101.dta")
+head(Panel)
+library(car)
+scatterplot(y~year|country, boxplots=FALSE, smooth=TRUE, reg.line=FALSE, data=Panel)
+```
+
+##Fixed effects: Heterogeneity across countries (or entities)
+```{r}
+library(gplots)
+plotmeans(y ~ country, main="Heterogeineity across countries", data=Panel)
+# plotmeans draw a 95% confidence interval around the means
+```
+##Fixed effects: Heterogeneity across years
+```{r}
+plotmeans(y ~ year, main="Heterogeineity across years", data=Panel)
+# plotmeans draw a 95% confidence interval around the means
+# Remove package ‘gplots’ from the workspace
+detach("package:gplots")
+```
+
+##OLS regression
+```{r}
+ols <-lm(y ~ x1, data=Panel)
+summary(ols)
+```
+
+##Fixed effects using Least squares dummy variable model
+```{r}
+fixed.dum <-lm(y ~ x1 + factor(country) - 1, data=Panel)
+summary(fixed.dum)
+yhat <- fixed.dum$fitted
+scatterplot(yhat~Panel$x1|Panel$country, boxplots=FALSE, xlab="x1", ylab="yhat",smooth=FALSE)
+abline(lm(Panel$y~Panel$x1),lwd=3, col="red")
+```
+
+##Comparing OLS vs LSDV model
+```{r}
+library(apsrtable)
+#Each component of the factor variable (country) is absorbing the effects particular to each country. Predictor x1 was not significant in the OLS model, once controlling for differences across countries, x1 became significant in the OLS_DUM (i.e. LSDV model).
+apsrtable(ols,fixed.dum, model.names = c("OLS", "OLS_DUM"))
+# Displays a table in Latex form
+```
+##Fixed effects: n entity-specific intercepts (using plm)
+```{r}
+library(plm)
+fixed <- plm(y ~ x1, data = Panel, index = c("country", "year"), model = "within")
+summary(fixed)
+```
+#RANDOM-EFFECTS MODEL 
+##(Random Intercept, Partial Pooling Model)
+
+##Random effects (using plm)
+```{r}
+random <- plm(y~ x1, data = Panel, index = c("country", "year"), model = "random")
+summary(random)
+```
+#FIXED OR RANDOM?
+##Fixed or Random: Hausman test
+> To decide between fixed or random effects you can run a Hausman test where the null hypothesis is that the preferred model is random effects vs. the alternative the fixed effects (see Green, 2008, chapter 9). It basically tests whether the unique errors (ui) are correlated with the regressors, the null hypothesis is they are not.
+
+```{r}
+phtest(fixed, random)
+#If the p-value is significant (for example <0.05) then use fixed effects, if not use random effects.
+```
+#OTHER TESTS/ DIAGNOSTICS
+##Testing for time-fixed effects
+```{r}
+fixed.time <- plm(y ~ x1 + factor(year), data=Panel, index=c("country", "year"), model="within")
+summary(fixed.time)
+```
+## Testing time-fixed effects. The null is that no time-fixed effects needed
+```{r}
+pFtest(fixed.time, fixed)
+plmtest(fixed, c("time"), type=("bp"))
+#f this number is < 0.05 then use time-fixed effects. In this example, no need to use time-fixed effects.
+```
+##Testing for random effects: Breusch-Pagan Lagrange multiplier (LM)
+> The LM test helps you decide between a random effects regression and a simple OLS regression.
+The null hypothesis in the LM test is that variances across entities is zero. This is, no significant difference across units (i.e. no panel effect).
+
+```{r}
+# Regular OLS (pooling model) using plm
+pool <- plm(y ~ x1, data=Panel, index=c("country", "year"), model="pooling") 
+summary(pool)
+# Breusch-Pagan Lagrange Multiplier for random effects. Null is no panel effect (i.e. OLS better).
+plmtest(pool, type=c("bp"))
+#Here we failed to reject the null and conclude that random effects is not appropriate. This is, no evidence of significant differences across countries, therefore you can run a simple OLS regression.
+```
+##Testing for cross-sectional dependence/contemporaneous correlation: using Breusch-Pagan LM test of independence and Pasaran CD test
+> According to Baltagi, cross-sectional dependence is a problem in macro panels with long time series. This is not much of a problem in micro panels (few years and large number of cases).
+The null hypothesis in the B-P/LM and Pasaran CD tests of independence is that residuals across entities are not correlated. B-P/LM and Pasaran CD (cross-sectional dependence) tests are used to test whether the residuals are correlated across entities*. Cross-sectional dependence can lead to bias in tests results (also called contemporaneous correlation).
+
+```{r}
+fixed <- plm(y ~ x1, data=Panel, index=c("country", "year"), model="within") 
+pcdtest(fixed, test = c("lm"))
+pcdtest(fixed, test = c("cd"))
+#￼No cross-sectional dependence
+```
+##Testing for serial correlation
+> Serial correlation tests apply to macro panels with long time series. Not a problem in micro panels (with very few years). The null is that there is not serial correlation.
+
+```{r}
+library('lmtest')
+pbgtest(fixed)
+```
+##Testing for unit roots/stationarity
+> The Dickey-Fuller test to check for stochastic trends. The null hypothesis is that the series has a unit root (i.e. non-stationary). If unit root is present you can take the first difference of the variable.
+
+```{r}
+Panel.set <- plm.data(Panel, index = c("country", "year"))
+library(tseries)
+adf.test(Panel.set$y, k=2)
+#￼If p-value < 0.05 then no unit roots present.
+```
+
+##Testing for heteroskedasticity
+> The null hypothesis for the Breusch-Pagan test is homoskedasticity.
+
+```{r}
+library(lmtest)
+bptest(y ~ x1 + factor(country), data = Panel, studentize=F)
+#Presence of heteroskedasticity
+
+#If hetersokedaticity is detected you can use robust covariance matrix to account for it. See the following.
+```
+
+##Controlling for heteroskedasticity: Robust covariance matrix estimation (Sandwich estimator)
+> The --vcovHC– function estimates three heteroskedasticity-consistent covariance estimators:
+
+The --vcovHC– function estimates three heteroskedasticity-consistent covariance estimators:
+
+* "white1" - for general heteroskedasticity but no serial correlation. Recommended for random effects.
+* "white2" - is "white1" restricted to a common variance within groups. Recommended for random effects.
+* "arellano" - both heteroskedasticity and serial correlation. Recommended for fixed effects.
+
+The following options apply*:
+
+* HC0 - heteroskedasticity consistent. The default.
+* HC1,HC2, HC3 – Recommended for small samples. HC3 gives less weight to influential
+     observations.
+* HC4 - small samples with influential observations
+* HAC - heteroskedasticity and autocorrelation consistent (type ?vcovHAC for more
+details)
+
+####See following example
+##Controlling for heteroskedasticity: Random effects
+```{r}
+random <- plm(y ~ x1, data=Panel, index=c("country", "year"), model="random") 
+coeftest(random) # Original coefficients
+coeftest(random, vcovHC)       # Heteroskedasticity consistent coefficients
+coeftest(random, vcovHC(random, type = "HC3")) # Heteroskedasticity consistent coefficients, type 3
+# The following shows the HC standard errors of the coefficients
+t(sapply(c("HC0", "HC1", "HC2", "HC3", "HC4"), function(x) sqrt(diag(vcovHC(random, type = x)))))
+#￼Standard errors given different types of H
+```
+##Controlling for heteroskedasticity: Fixed effects
+```{r}
+fixed <- plm(y ~ x1, data=Panel, index=c("country", "year"), model="within")
+coeftest(fixed)      # Original coefficients
+coeftest(fixed, vcovHC) # Heteroskedasticity consistent coefficients
+coeftest(fixed, vcovHC(fixed, method = "arellano")) # Heteroskedasticity consistent coefficients (Arellano)
+coeftest(fixed, vcovHC(fixed, type = "HC3")) # Heteroskedasticity consistent coefficients, type 3
+# The following shows the HC standard errors of the coefficients
+t(sapply(c("HC0", "HC1", "HC2", "HC3", "HC4"), function(x) sqrt(diag(vcovHC(fixed, type = x)))))
+#Standard errors given different types of HC.
+
+```
+
+

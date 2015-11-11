@@ -1,0 +1,21 @@
+---
+title: "Spread Dataframe"
+output: html_document
+---
+```{r}
+set.seed(6)
+df <- data.frame(t = as.Date("2014/1/1")+seq(0,100.25,.25),
+                 name = paste(sample(c("Alert_","NonOp_"),402,replace=TRUE),
+                              sample(1:10,402,replace=TRUE),sep=""),
+                 unit = c(rep(1:10,each=40),10,10))
+head(df)
+library(reshape2)
+newdf <- cbind(df, colsplit(df$name, "_", c("V1", "V2")))
+head(newdf)
+newdf$V1 <- factor(newdf$V1, c("NonOp", "Alert"), c("N", "A"))
+head(newdf)
+newdf$V2 <- paste0("name_", newdf$V2)
+head(newdf)
+head(newdf)
+head(dcast(newdf, t+unit ~ V2, value.var = "V1"))
+```

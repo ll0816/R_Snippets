@@ -1,0 +1,166 @@
+---
+title: 'dpylr: select( ), filter( ), arrange( ), mutate( ), summarize( )'
+output:
+  pdf_document:
+    highlight: zenburn
+    number_sections: yes
+    toc: yes
+  html_document:
+    highlight: zenburn
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+---
+##dplyr
+###Load package
+```{r}
+library(dplyr)
+```
+One unique aspect of dplyr is that the same set of tools allow you to work with tabular data from a variety of sources, including data frames, data tables, databases and multidimensional arrays. In this lesson, we'll focus on data frames, but everything you learn will apply equally to other formats.  
+```{r}
+path2csv <- "/Library/Frameworks/R.framework/Versions/3.1/Resources/library/swirl/Courses/Getting_and_Cleaning_Data/Manipulating_Data_with_dplyr/2014-07-08.csv"
+mydf <- read.csv(path2csv, stringsAsFactors =FALSE)
+dim(mydf)
+```
+###use head( ) to preview the data
+```{r}
+head(mydf)
+```
+####To confirm **dplyr** version
+```{r}
+packageVersion("dplyr")
+```
+###The first step of working with data in dplyr is to load the data into what the package authors
+| call a 'data frame tbl' or 'tbl_df'.
+```{r}
+cran <- tbl_df(mydf)
+```
+###To avoid confusion and keep things running smoothly, remove the original dataframe from workspace.
+```{r}
+rm("mydf")
+```
+###See what is meant by this
+```{r}
+cran
+```
+> According to the "Introduction to dplyr" vignette written by the package authors, "The dplyr philosophy is to have small functions that each do one thing well." Specifically, dplyr supplies five 'verbs' that cover all fundamental data manipulation tasks: select( ), filter( ), arrange( ), mutate( ), and summarize( ).  
+
+##select( )
+###Use ?manip to pull up the documentation for these core functions.
+```{r}
+?manip
+```
+###As may often be the case, particularly with larger datasets, we are only interested in some of the variables. Select only the ip_id, package, and country variables from the cran dataset.
+```{r}
+select(cran, ip_id, package, country)
+```
+> The first thing to notice is that we don't have to type cran$ip_id, cran$package, and cran$country, as we normally would when referring to columns of a data frame.  
+Also, note that the columns are returned to us in the order we specified, even though ip_id is the rightmost column in the original dataset.
+
+> Normally, ':' is reserved for numbers sequence, but select( ) allows you to specify a sequence of columns this way, which can save a bunch of typing.
+
+###Select all columns starting from r_arch and ending with country
+```{r}
+select(cran, r_arch:country) 
+```
+###Select the same columns in reverse order
+```{r}
+select(cran, country:r_arch) 
+```
+> Instead of specifying the columns we want to keep, we can also specify the columns we want to
+ throw away.
+
+### To omit the time column
+```{r}
+select(cran, -time)
+```
+### Combine strategies to omit all columns from X through size (X:size)
+```{r}
+select(cran, -(X:size))
+```
+> After knew how to select a subset of columns using select( ), a natural next question is "How do I select a subset of rows?" That's where the filter( ) function comes in.
+
+##filter( )
+### Select all rows for which the package variable is equal to "swirl"
+```{r}
+filter(cran, package == "swirl")
+```
+> Again, note that filter( ) recognizes 'package' as a column of cran, without you having to explicitly specify cran$package.
+
+###Specify as many conditions as you want, separated by commas
+**For example**
+```{r}
+filter(cran, r_version == "3.1.1", country == "US")
+```
+### Edit previous call to filter( ) to instead return rows corresponding to users in "IN" (India) running an R version that is less than or equal to "3.0.2"
+```{r}
+filter(cran,  country == "IN", r_version <= "3.0.2")
+```
+###Last two calls to filter( ) requested all rows for which some condition AND another condition were TRUE.  
+###We can also request rows for which EITHER one condition OR another condition are TRUE.
+```{r}
+filter(cran, country == "US" | country == "IN")
+```
+###Use filter( ) to fetch all rows for which size is strictly greater than (>) 100500 (no quotes, since size is numeric) AND r_os equals "linux-gnu"
+```{r}
+filter(cran, size > 100500 , r_os == "linux-gnu")
+```
+###Get only the rows for which the r_version is not missing
+```{r}
+filter(cran, !is.na(r_version))
+```
+> Inherent in select( ) was also the ability to arrange our selected columns in any order we please.
+Sometimes we want to order the rows of a dataset according to the values of a particular variable. This is the job of arrange( ).
+
+###To see how arrange( ) works, first take a subset of cran. 
+###select( ) all columns from size through ip_id and store the result in cran2.
+```{r}
+cran2 <- select(cran, size : ip_id)
+```
+###To order the ROWS of cran2 so that ip_id is in ascending order (from small to large)
+```{r}
+arrange(cran2, ip_id)
+```
+###To do the same, but in descending order
+```{r}
+arrange(cran2, desc(ip_id))
+```
+###Arrange the data according to the values of multiple variables
+```{r}
+arrange(cran2, package, ip_id)
+```
+###Arrange cran2 by the following three variables, in this order: country (ascending), r_version (descending), and ip_id (ascending)
+```{r}
+arrange(cran2, country, desc(r_version), ip_id)
+```
+###Use select( ) to grab 3 columns -- ip_id, package, and size (in that order) -- and store the result in a new variable called cran3
+```{r}
+cran3 <- select(cran, ip_id, package, size)
+cran3
+```
+
+##mutate( )
+> It's common to create a new variable based on the value of one or more variables already in a dataset. The mutate( ) function does exactly this.
+
+###Add a column called size_mb that contains the download size in megabytes
+```{r}
+mutate(cran3, size_mb = size / 2^20)
+```
+> One very nice feature of mutate() is that you can use the value computed for your second column (size_mb) to create a third column, all in the same line of code.
+
+###Repeat the exact same command as above, except add a third argument creating a column that is named size_gb and equal to size_mb / 2^10
+```{r}
+mutate(cran3, size_mb = size / 2^20, size_gb = size_mb / 2^10)
+```
+###Rry one more for practice. Pretend we discovered a glitch in the system that provided the original values for the size variable. All of the values in cran3 are 1000 bytes less than they should be.
+```{r}
+mutate(cran3, correct_size = size + 1000)
+```
+
+##summarize( )
+> The last of the five core dplyr verbs, summarize(), collapses the dataset to a single row.
+```{r}
+summarize(cran, avg_bytes = mean(size))
+```
+> summarize() is most useful when working with data that has been grouped by the values of a particular variable.
+Summarize() can give you the requested value FOR EACH group in your dataset.

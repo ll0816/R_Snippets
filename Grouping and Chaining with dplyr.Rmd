@@ -1,0 +1,111 @@
+---
+title: "Grouping and Chaining with dplyr"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    highlight: zenburn
+    theme: cosmo
+    toc: yes
+---
+> There are five main data manipulation 'verbs' in dplyr: select(), filter(), arrange(), mutate(), and summarize().  
+The last of these, summarize(), is most powerful when applied to grouped data.  
+The main idea behind grouping data is that you want to break up your dataset into groups of rows based on the values of one or more variables. The group_by() function is reponsible for doing this.
+###Initialization
+```{r}
+library(dplyr)
+path2csv <- "/Library/Frameworks/R.framework/Versions/3.1/Resources/library/swirl/Courses/Getting_and_Cleaning_Data/Manipulating_Data_with_dplyr/2014-07-08.csv"
+path2csv %>%
+    read.csv( stringsAsFactors =FALSE) %>%
+    tbl_df() -> cran
+rm("mydf")
+cran
+```
+
+##gtoup_by( )
+```{r}
+?group_by
+```
+###Group cran by the package variable and store the result in a new variable called by_package
+```{r}
+by_package <- group_by(cran, package)
+by_package
+```
+> Applied mean(size) to the original tbl_df via summarize(), it returned a single number -- the mean of all values in the size column.   
+
+### Wouldn't it be so much more interesting to look at the mean download size for each unique package?  
+### That's exactly what you'll get if you use summarize() to apply mean(size) to the grouped data in by_package.
+```{r}
+summarize(by_package, mean(size))
+```
+### Compute four values, in the following order, from the grouped data: count = n(), unique = n_distinct(ip_id), countries = n_distinct(country), avg_bytes = mean(size)
+```{r}
+pack_sum <- summarize(by_package,
+                      count = n(),
+                      unique = n_distinct(ip_id),
+                      countries = n_distinct(country),
+                      avg_bytes = mean(size))
+pack_sum
+```
+The 'count' column, created with n(), contains the total number of rows (i.e. downloads) for each package. The 'unique' column, created with n_distinct(ip_id), gives the total number of unique downloads for each package, as measure by the number of distinct ip_id's. The 'countries' column, created with n_distinct(country), provides the number of countries in which the each package was downloaded. And finally, the 'avg_bytes' column, created with mean(size), contains the mean download size (in bytes) for each package.
+###splits the data into the top 1% and bottom 99% of packages based on total downloads
+```{r}
+quantile(pack_sum$count, probs = 0.99)
+```
+###Isolate only those packages which had more than 679 total downloads
+```{r}
+top_counts <- filter(pack_sum, count > 679)
+top_counts
+```
+> By default, if the dataset your working with has more than 100 rows, dplyr will only print the first 10. Otherwise, it will print all rows, since it's not as overwhelming.
+
+### See the first 20
+```{r}
+head(top_counts, 20)
+```
+###Arrange() the rows of top_counts based on the 'count' column
+```{r}
+arrange(top_counts, desc(count))
+```
+###Find the 0.99, or 99%, quantile for the 'unique' variable
+```{r}
+quantile(pack_sum$unique, probs = 0.99)
+```
+### Select all rows corresponding to values of 'unique' that are strictly greater than 465
+```{r}
+top_unique <- filter(pack_sum, unique >465)
+top_unique
+```
+### Arrange() top_unique by the 'unique' column, in descending order
+```{r}
+arrange(top_unique, desc(unique))
+```
+##chaing(piping)
+> Chaining allows you to string together multiple function calls in a way that is compact and readable, while still accomplishing the desired result.
+
+```
+result3 <-
+  cran %>%
+  group_by(package) %>%
+  summarize(count = n(),
+            unique = n_distinct(ip_id),
+            countries = n_distinct(country),
+            avg_bytes = mean(size)
+  ) %>%
+  filter(countries > 60) %>%
+  arrange(desc(countries), avg_bytes)
+print(result3)
+```
+### Select() the following columns from cran, ip_id, country, package, size
+```{r}
+cran %>%
+  select(ip_id, country, package, size) %>%
+  #add a column called size_mb that contains
+    mutate(size_mb = size / 2^20) %>%
+  #select all rows for which size_mb is less than or equal to (<=) 0.5.
+      filter(size_mb <= 0.5) %>%
+  #arrange() the result by size_mb, in descending order.
+        arrange(desc(size_mb)) %>%
+          print
+```
+
